@@ -1,0 +1,5 @@
+Sanda:
+	Propunere tehnologie folosita
+		Front end- React Native
+		Back end->NodeJS, JavaScript
+		
