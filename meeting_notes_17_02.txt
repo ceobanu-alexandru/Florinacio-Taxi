@@ -3,4 +3,4 @@ Sanda:
 		FrontEnd- React Native(Expo)
 		BackEnd->NodeJS(Express)
 
-	Recommended IDE- Visual Studio
+	Recommended IDE- VS Code
