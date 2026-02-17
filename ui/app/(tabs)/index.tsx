@@ -1,98 +1,172 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.logo}>FLORINACIO</Text>
+        <Text style={styles.logoDot}>.</Text>
+      </View>
+
+      {/* Hero section */}
+      <View style={styles.hero}>
+        <Text style={styles.heroEmoji}>🚖</Text>
+        <Text style={styles.heroTitle}>Call Florinacio</Text>
+        <Text style={styles.heroSubtitle}>Premium rides, anytime</Text>
+      </View>
+
+      {/* CTA Button */}
+      <Pressable style={styles.ctaButton} onPress={() => router.push('/map')}>
+        <Text style={styles.ctaText}>Request a Ride</Text>
+      </Pressable>
+
+      {/* Info cards */}
+      <View style={styles.cardsRow}>
+        <View style={styles.card}>
+          <Text style={styles.cardEmoji}>⚡</Text>
+          <Text style={styles.cardTitle}>Fast</Text>
+          <Text style={styles.cardDesc}>3 min avg pickup</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardEmoji}>🛡️</Text>
+          <Text style={styles.cardTitle}>Safe</Text>
+          <Text style={styles.cardDesc}>Verified drivers</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardEmoji}>💰</Text>
+          <Text style={styles.cardTitle}>Fair</Text>
+          <Text style={styles.cardDesc}>No surge pricing</Text>
+        </View>
+      </View>
+
+      {/* Taxi flags accent */}
+      <View style={styles.flagsRow}>
+        <Text style={styles.flag}>🏁</Text>
+        <Text style={styles.flag}>🚕</Text>
+        <Text style={styles.flag}>🏁</Text>
+        <Text style={styles.flag}>🚕</Text>
+        <Text style={styles.flag}>🏁</Text>
+      </View>
+
+      {/* Bottom accent line */}
+      <View style={styles.accentLine} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#0D0D0D',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 32,
   },
-  stepContainer: {
-    gap: 8,
+  logo: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+  },
+  logoDot: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFD600',
+  },
+  hero: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  heroEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  heroSubtitle: {
+    fontSize: 16,
+    color: '#999999',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  ctaButton: {
+    backgroundColor: '#FFD600',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 50,
+    marginBottom: 36,
+    shadowColor: '#FFD600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  ctaText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0D0D0D',
+    letterSpacing: 0.5,
+  },
+  cardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 32,
+  },
+  card: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  cardDesc: {
+    fontSize: 11,
+    color: '#999999',
+    textAlign: 'center',
+  },
+  flagsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 24,
+  },
+  flag: {
+    fontSize: 28,
+  },
+  accentLine: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFD600',
+    marginTop: 'auto',
+    marginBottom: 16,
   },
 });
