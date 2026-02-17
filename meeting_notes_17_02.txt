@@ -1,6 +1,6 @@
 Sanda:
 	Propunere tehnologie folosita;
-		Front end- React Native(Expo)
-		Back end->NodeJS, JavaScript
+		FrontEnd- React Native(Expo)
+		BackEnd->NodeJS(Express)
 
 	Recommended IDE- Visual Studio
