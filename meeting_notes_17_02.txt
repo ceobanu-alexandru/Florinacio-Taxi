@@ -1,5 +1,5 @@
 Sanda:
 	Propunere tehnologie folosita
-		Front end- React Native
+		Front end- React Native(Expo)
 		Back end->NodeJS, JavaScript
 		
