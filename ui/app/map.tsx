@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Stack } from 'expo-router';
 
@@ -20,6 +20,8 @@ const TAXI_LOCATION: LocationCoords = {
   latitude: 44.478640,
   longitude: 26.124965,
 };
+
+const PRICE_PER_KM = 3; // lei per km
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyB029m41iU1JyyfI5ph_FnxugfiVMmXj20';
 
@@ -103,13 +105,39 @@ async function fetchRoute(
   }
 }
 
+/** Reverse-geocode coordinates into a short address via Google Geocoding API */
+async function reverseGeocode(coords: LocationCoords): Promise<string> {
+  try {
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json` +
+      `?latlng=${coords.latitude},${coords.longitude}` +
+      `&key=${GOOGLE_MAPS_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results?.length) {
+      return data.results[0].formatted_address;
+    }
+  } catch (_) {}
+  return `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+}
+
 export default function MapScreen() {
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+
+  // Taxi → user route (shown while user hasn't picked a destination yet)
+  const [taxiRoute, setTaxiRoute] = useState<RouteInfo | null>(null);
+
+  // Destination pin & route
+  const [destination, setDestination] = useState<LocationCoords | null>(null);
+  const [destinationAddress, setDestinationAddress] = useState<string | null>(null);
+  const [destRoute, setDestRoute] = useState<RouteInfo | null>(null);
+  const [computingRoute, setComputingRoute] = useState(false);
+
   const mapRef = useRef<MapView>(null);
 
+  // Get user location
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -131,13 +159,12 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Fetch real route once we have the user's location
+  // Fetch taxi → user route
   useEffect(() => {
     if (!location) return;
-    fetchRoute(location, TAXI_LOCATION).then((info) => {
-      setRouteInfo(info);
-      // Fit the route polyline (or both markers) into view
-      if (mapRef.current) {
+    fetchRoute(TAXI_LOCATION, location).then((info) => {
+      setTaxiRoute(info);
+      if (mapRef.current && !destination) {
         const coords = info?.polylineCoords ?? [location, TAXI_LOCATION];
         mapRef.current.fitToCoordinates(coords, {
           edgePadding: { top: 80, right: 80, bottom: 200, left: 80 },
@@ -146,6 +173,51 @@ export default function MapScreen() {
       }
     });
   }, [location]);
+
+  // Fetch user → destination route whenever destination changes
+  useEffect(() => {
+    if (!location || !destination) return;
+    setComputingRoute(true);
+    Promise.all([
+      fetchRoute(location, destination),
+      reverseGeocode(destination),
+    ]).then(([info, address]) => {
+      setDestRoute(info);
+      setDestinationAddress(address);
+      setComputingRoute(false);
+
+      if (mapRef.current && info?.polylineCoords) {
+        mapRef.current.fitToCoordinates(info.polylineCoords, {
+          edgePadding: { top: 80, right: 80, bottom: 280, left: 80 },
+          animated: true,
+        });
+      }
+    });
+  }, [destination]);
+
+  /** Handle tapping on the map to set (or move) destination */
+  const handleMapPress = (e: MapPressEvent) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    setDestination({ latitude, longitude });
+    setDestRoute(null); // clear old while computing
+  };
+
+  /** Clear the destination pin */
+  const clearDestination = () => {
+    setDestination(null);
+    setDestRoute(null);
+    setDestinationAddress(null);
+    // Re-fit to taxi route
+    if (mapRef.current && location) {
+      const coords = taxiRoute?.polylineCoords ?? [location, TAXI_LOCATION];
+      mapRef.current.fitToCoordinates(coords, {
+        edgePadding: { top: 80, right: 80, bottom: 200, left: 80 },
+        animated: true,
+      });
+    }
+  };
+
+  const price = destRoute ? destRoute.distanceKm * PRICE_PER_KM : null;
 
   return (
     <>
@@ -171,15 +243,14 @@ export default function MapScreen() {
             style={styles.map}
             provider={PROVIDER_GOOGLE}
             initialRegion={{
-              latitude: (location.latitude + TAXI_LOCATION.latitude) / 2,
-              longitude: (location.longitude + TAXI_LOCATION.longitude) / 2,
-              latitudeDelta:
-                Math.abs(location.latitude - TAXI_LOCATION.latitude) * 1.6 + 0.01,
-              longitudeDelta:
-                Math.abs(location.longitude - TAXI_LOCATION.longitude) * 1.6 + 0.01,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
             }}
             showsUserLocation
             showsMyLocationButton
+            onPress={handleMapPress}
           >
             {/* User marker */}
             <Marker
@@ -189,7 +260,7 @@ export default function MapScreen() {
               pinColor="#FFD600"
             />
 
-            {/* Taxi cab marker – yellow car seen from above */}
+            {/* Taxi cab marker */}
             <Marker
               coordinate={TAXI_LOCATION}
               title="Florinacio Taxi"
@@ -198,30 +269,94 @@ export default function MapScreen() {
               <Text style={styles.taxiMarkerText}>🚖</Text>
             </Marker>
 
-            {/* Road route line */}
-            {routeInfo?.polylineCoords && (
+            {/* Destination marker */}
+            {destination && (
+              <Marker
+                coordinate={destination}
+                title="Destination"
+                description={destinationAddress ?? 'Your destination'}
+                pinColor="#FF3B30"
+                draggable
+                onDragEnd={(e) => {
+                  const { latitude, longitude } = e.nativeEvent.coordinate;
+                  setDestination({ latitude, longitude });
+                }}
+              />
+            )}
+
+            {/* Taxi → user route (dimmed when destination is set) */}
+            {taxiRoute?.polylineCoords && (
               <Polyline
-                coordinates={routeInfo.polylineCoords}
-                strokeColor="#FFD600"
-                strokeWidth={4}
+                coordinates={taxiRoute.polylineCoords}
+                strokeColor={destination ? '#888888' : '#FFD600'}
+                strokeWidth={destination ? 3 : 4}
+              />
+            )}
+
+            {/* User → destination route */}
+            {destRoute?.polylineCoords && (
+              <Polyline
+                coordinates={destRoute.polylineCoords}
+                strokeColor="#00C853"
+                strokeWidth={5}
               />
             )}
           </MapView>
         ) : null}
 
-        {/* Bottom info bar */}
-        {location && !loading && routeInfo && (
-          <View style={styles.bottomBar}>
-            <Text style={styles.bottomEmoji}>🚖</Text>
-            <View style={styles.bottomInfo}>
-              <Text style={styles.bottomTitle}>Florinacio is on the way</Text>
-              <Text style={styles.bottomSubtitle}>
-                Distance: {routeInfo.distanceKm.toFixed(1)} km
-              </Text>
-              <Text style={styles.bottomSubtitle}>
-                ETA (with traffic): {routeInfo.trafficText}
-              </Text>
+        {/* Hint banner — shown when no destination is set yet */}
+        {location && !loading && !destination && (
+          <View style={styles.hintBanner}>
+            <Text style={styles.hintText}>📍 Tap on the map to set your destination</Text>
+          </View>
+        )}
+
+        {/* Computing route spinner */}
+        {computingRoute && (
+          <View style={styles.hintBanner}>
+            <Text style={styles.hintText}>⏳ Computing route...</Text>
+          </View>
+        )}
+
+        {/* Bottom info bar — taxi ETA (always visible when loaded) */}
+        {location && !loading && taxiRoute && (
+          <View style={[styles.bottomBar, destination && destRoute ? styles.bottomBarTall : undefined]}>
+            {/* Taxi info row */}
+            <View style={styles.bottomRow}>
+              <Text style={styles.bottomEmoji}>🚖</Text>
+              <View style={styles.bottomInfo}>
+                <Text style={styles.bottomTitle}>Florinacio is on the way</Text>
+                <Text style={styles.bottomSubtitle}>
+                  Taxi ETA: {taxiRoute.trafficText} ({taxiRoute.distanceKm.toFixed(1)} km)
+                </Text>
+              </View>
             </View>
+
+            {/* Destination info — only when a destination route is computed */}
+            {destination && destRoute && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.bottomRow}>
+                  <Text style={styles.bottomEmoji}>📍</Text>
+                  <View style={styles.bottomInfo}>
+                    <Text style={styles.bottomTitle} numberOfLines={1}>
+                      {destinationAddress ?? 'Destination'}
+                    </Text>
+                    <Text style={styles.bottomSubtitle}>
+                      Distance: {destRoute.distanceKm.toFixed(1)} km · ETA: {destRoute.trafficText}
+                    </Text>
+                    <Text style={styles.priceText}>
+                      Price: {price!.toFixed(2)} lei
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Clear destination button */}
+                <Pressable style={styles.clearButton} onPress={clearDestination}>
+                  <Text style={styles.clearButtonText}>✕ Change destination</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         )}
       </View>
@@ -302,6 +437,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 32,
   },
+  hintBanner: {
+    position: 'absolute',
+    top: 8,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(20, 20, 20, 0.9)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  hintText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -310,18 +461,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#141414',
     borderTopWidth: 1,
     borderTopColor: '#2A2A2A',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     paddingBottom: 36,
+    gap: 12,
+  },
+  bottomBarTall: {
+    paddingBottom: 40,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 16,
   },
   bottomEmoji: {
     fontSize: 36,
   },
   bottomInfo: {
-    gap: 4,
+    flex: 1,
+    gap: 3,
   },
   bottomTitle: {
     fontSize: 17,
@@ -332,6 +490,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFD600',
     fontWeight: '600',
+  },
+  priceText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#00C853',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#2A2A2A',
+    marginVertical: 4,
+  },
+  clearButton: {
+    alignSelf: 'center',
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#2A2A2A',
+  },
+  clearButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF6B6B',
   },
   taxiMarkerText: {
     fontSize: 22,
