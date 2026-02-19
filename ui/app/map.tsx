@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Stack } from 'expo-router';
@@ -159,10 +159,7 @@ export default function MapScreen() {
       />
       <View style={styles.container}>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFD600" />
-            <Text style={styles.loadingText}>Finding your location...</Text>
-          </View>
+          <PulsingLogo message="Finding your location..." />
         ) : errorMsg ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.errorEmoji}>📍</Text>
@@ -232,6 +229,45 @@ export default function MapScreen() {
   );
 }
 
+/** Pulsing logo loading indicator */
+function PulsingLogo({ message }: { message: string }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.15,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [scale]);
+
+  return (
+    <View style={styles.loadingContainer}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Image
+          source={require('../assets/images/ada.png')}
+          style={styles.pulsingLogo}
+          resizeMode="contain"
+        />
+      </Animated.View>
+      <Text style={styles.loadingText}>{message}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -250,6 +286,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999999',
     fontWeight: '600',
+  },
+  pulsingLogo: {
+    width: 120,
+    height: 120,
+    borderRadius: 20,
   },
   errorEmoji: {
     fontSize: 48,
