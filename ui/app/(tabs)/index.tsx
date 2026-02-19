@@ -1,58 +1,105 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+
+type DriverStatus = 'liber' | 'ocupat' | 'indisponibil';
+
+const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string; description: string }> = {
+  liber: {
+    label: 'Liber',
+    color: '#00C853',
+    description: 'Șoferul este disponibil',
+  },
+  ocupat: {
+    label: 'Ocupat',
+    color: '#FF3B30',
+    description: 'Șoferul este într-o cursă',
+  },
+  indisponibil: {
+    label: 'Nu lucrează azi',
+    color: '#888888',
+    description: 'Șoferul nu este disponibil astăzi',
+  },
+};
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [driverStatus, setDriverStatus] = useState<DriverStatus>('ocupat'); // Default status, will be updated on mount
+  const [remainingMinutes, setRemainingMinutes] = useState<number>(12);
+
+  // Simulate fetching driver status — replace with real API call
+  useEffect(() => {
+    const demoStatus: DriverStatus = 'ocupat'; // Change this value to 'liber' or 'indisponibil' to see different states
+    setDriverStatus(demoStatus);
+
+    // Example ETA until current ride finishes (from backend in real app)
+    setRemainingMinutes(12);
+  }, []);
+
+  // Countdown while driver is occupied
+  useEffect(() => {
+    if (driverStatus !== 'ocupat') return;
+
+    const interval = setInterval(() => {
+      setRemainingMinutes((prev) => (prev > 1 ? prev - 1 : 1));
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [driverStatus]);
+
+  const status = STATUS_CONFIG[driverStatus];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>FLORINACIO</Text>
+        <Text style={styles.logo}>BrotaXI</Text>
         <Text style={styles.logoDot}>.</Text>
+      </View>
+
+      {/* Driver status indicator */}
+      <View style={[styles.statusBadge, { borderColor: status.color }]}> 
+        <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+        <Text style={[styles.statusLabel, { color: status.color }]}>{status.label}</Text>
+        <View style={styles.statusInfoBlock}>
+          <Text style={styles.statusDesc}>{status.description}</Text>
+          {driverStatus === 'ocupat' && (
+            <Text style={styles.statusEta}>Termină cursa în aprox. {remainingMinutes} min</Text>
+          )}
+        </View>
+      </View>
+
+      {/* Tarife */}
+      <View style={styles.fareCard}>
+        <Text style={styles.fareTitle}>Tarife</Text>
+        <View style={styles.fareRow}>
+          <Text style={styles.fareLabel}>Zi</Text>
+          <Text style={styles.fareValue}>3 lei/km</Text>
+        </View>
+        <View style={styles.fareDivider} />
+        <View style={styles.fareRow}>
+          <Text style={styles.fareLabel}>Noapte</Text>
+          <Text style={styles.fareValue}>4 lei/km</Text>
+        </View>
       </View>
 
       {/* Hero section */}
       <View style={styles.hero}>
-        <Text style={styles.heroEmoji}>🚖</Text>
-        <Text style={styles.heroTitle}>Call Florinacio</Text>
-        <Text style={styles.heroSubtitle}>Premium rides, anytime</Text>
+        <Image
+          source={require('../../assets/images/ada.png')}
+          style={styles.heroLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.heroTitle}>Sună-l pe Bro</Text>
+        <Text style={styles.heroSubtitle}>Curse premium, oricând</Text>
       </View>
 
       {/* CTA Button */}
       <Pressable style={styles.ctaButton} onPress={() => router.push('/map')}>
-        <Text style={styles.ctaText}>Request a Ride</Text>
+        <Text style={styles.ctaText}>Solicită o cursă</Text>
       </Pressable>
-
-      {/* Info cards */}
-      <View style={styles.cardsRow}>
-        <View style={styles.card}>
-          <Text style={styles.cardEmoji}>⚡</Text>
-          <Text style={styles.cardTitle}>Fast</Text>
-          <Text style={styles.cardDesc}>3 min avg pickup</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.cardEmoji}>🛡️</Text>
-          <Text style={styles.cardTitle}>Safe</Text>
-          <Text style={styles.cardDesc}>Verified drivers</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.cardEmoji}>💰</Text>
-          <Text style={styles.cardTitle}>Fair</Text>
-          <Text style={styles.cardDesc}>No surge pricing</Text>
-        </View>
-      </View>
-
-      {/* Taxi flags accent */}
-      <View style={styles.flagsRow}>
-        <Text style={styles.flag}>🏁</Text>
-        <Text style={styles.flag}>🚕</Text>
-        <Text style={styles.flag}>🏁</Text>
-        <Text style={styles.flag}>🚕</Text>
-        <Text style={styles.flag}>🏁</Text>
-      </View>
 
       {/* Bottom accent line */}
       <View style={styles.accentLine} />
@@ -74,23 +121,25 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    fontSize: 14,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 4,
   },
   logoDot: {
-    fontSize: 14,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFD600',
   },
   hero: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 15,
   },
-  heroEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+  heroLogo: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    overflow: 'hidden',
   },
   heroTitle: {
     fontSize: 34,
@@ -123,43 +172,77 @@ const styles = StyleSheet.create({
     color: '#0D0D0D',
     letterSpacing: 0.5,
   },
-  cardsRow: {
+  statusBadge: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    paddingVertical: 20,
-    paddingHorizontal: 12,
     alignItems: 'center',
-    gap: 6,
-  },
-  cardEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  cardDesc: {
-    fontSize: 11,
-    color: '#999999',
-    textAlign: 'center',
-  },
-  flagsRow: {
-    flexDirection: 'row',
-    gap: 14,
+    alignSelf: 'stretch',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 14,
+    borderWidth: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 10,
     marginBottom: 24,
   },
-  flag: {
-    fontSize: 28,
+  statusDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  statusLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  statusDesc: {
+    fontSize: 12,
+    color: '#999999',
+    textAlign: 'right',
+  },
+  statusInfoBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  statusEta: {
+    fontSize: 12,
+    color: '#FFD600',
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  fareCard: {
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  fareTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  fareRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fareLabel: {
+    fontSize: 14,
+    color: '#999999',
+    fontWeight: '600',
+  },
+  fareValue: {
+    fontSize: 14,
+    color: '#FFD600',
+    fontWeight: '700',
+  },
+  fareDivider: {
+    height: 1,
+    backgroundColor: '#2A2A2A',
+    marginVertical: 8,
   },
   accentLine: {
     width: 40,

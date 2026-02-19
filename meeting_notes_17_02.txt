@@ -6,3 +6,12 @@ Sanda:
 	Recommended IDE- VS Code
 
 Pentru vizualizarea UI-ului: aplicatia Expo Go
+
+Cerinte
+	-User-ul pasager va putea vedea doar disatnta fata de sofer in timp 
+	si distanta- dupa ce rezerva o cursa va putea vedea locatia exacta si traseul
+	-soferul va putea lasa un rating psagerul si invers
+	-soferul trenuie sa poat introduce el la care merge, pentru cazul in care a fost sunat
+	-pretul din aplicatie este estimativ
+	-dark mode
+	

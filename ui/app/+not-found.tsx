@@ -4,12 +4,12 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: 'Ups!' }} />
       <View style={styles.container}>
         <Text style={styles.emoji}>🚖</Text>
-        <Text style={styles.title}>This route doesn't exist</Text>
+        <Text style={styles.title}>Această pagină nu există</Text>
         <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to Home</Text>
+          <Text style={styles.linkText}>Mergi acasă</Text>
         </Link>
       </View>
     </>

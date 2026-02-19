@@ -142,7 +142,7 @@ export default function MapScreen() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrorMsg('Location permission denied. Please enable it in settings.');
+        setErrorMsg('Permisiunea de locație a fost refuzată. Activează-o din setări.');
         setLoading(false);
         return;
       }
@@ -223,7 +223,7 @@ export default function MapScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Your Ride',
+          title: 'Cursa ta',
           headerStyle: { backgroundColor: '#141414' },
           headerTintColor: '#FFD600',
           headerTitleStyle: { fontWeight: '700', color: '#FFFFFF' },
@@ -231,7 +231,7 @@ export default function MapScreen() {
       />
       <View style={styles.container}>
         {loading ? (
-          <PulsingLogo message="Finding your location..." />
+          <PulsingLogo message="Se caută locația ta..." />
         ) : errorMsg ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.errorEmoji}>📍</Text>
@@ -255,16 +255,16 @@ export default function MapScreen() {
             {/* User marker */}
             <Marker
               coordinate={location}
-              title="You are here"
-              description="Pickup point"
+              title="Ești aici"
+              description="Punct de ridicare"
               pinColor="#FFD600"
             />
 
             {/* Taxi cab marker */}
             <Marker
               coordinate={TAXI_LOCATION}
-              title="Florinacio Taxi"
-              description="Taxi cab location"
+              title="Bro Taxi"
+              description="Locația taxiului"
             >
               <Text style={styles.taxiMarkerText}>🚖</Text>
             </Marker>
@@ -273,8 +273,8 @@ export default function MapScreen() {
             {destination && (
               <Marker
                 coordinate={destination}
-                title="Destination"
-                description={destinationAddress ?? 'Your destination'}
+                title="Destinație"
+                description={destinationAddress ?? 'Destinația ta'}
                 pinColor="#FF3B30"
                 draggable
                 onDragEnd={(e) => {
@@ -307,14 +307,14 @@ export default function MapScreen() {
         {/* Hint banner — shown when no destination is set yet */}
         {location && !loading && !destination && (
           <View style={styles.hintBanner}>
-            <Text style={styles.hintText}>📍 Tap on the map to set your destination</Text>
+            <Text style={styles.hintText}>📍 Atinge harta pentru a seta destinația</Text>
           </View>
         )}
 
         {/* Computing route spinner */}
         {computingRoute && (
           <View style={styles.hintBanner}>
-            <Text style={styles.hintText}>⏳ Computing route...</Text>
+            <Text style={styles.hintText}>⏳ Se calculează ruta...</Text>
           </View>
         )}
 
@@ -325,9 +325,9 @@ export default function MapScreen() {
             <View style={styles.bottomRow}>
               <Text style={styles.bottomEmoji}>🚖</Text>
               <View style={styles.bottomInfo}>
-                <Text style={styles.bottomTitle}>Florinacio is on the way</Text>
+                <Text style={styles.bottomTitle}>Bro este pe drum</Text>
                 <Text style={styles.bottomSubtitle}>
-                  Taxi ETA: {taxiRoute.trafficText} ({taxiRoute.distanceKm.toFixed(1)} km)
+                  Taxi sosește în: {taxiRoute.trafficText} ({taxiRoute.distanceKm.toFixed(1)} km)
                 </Text>
               </View>
             </View>
@@ -340,20 +340,20 @@ export default function MapScreen() {
                   <Text style={styles.bottomEmoji}>📍</Text>
                   <View style={styles.bottomInfo}>
                     <Text style={styles.bottomTitle} numberOfLines={1}>
-                      {destinationAddress ?? 'Destination'}
+                      {destinationAddress ?? 'Destinație'}
                     </Text>
                     <Text style={styles.bottomSubtitle}>
-                      Distance: {destRoute.distanceKm.toFixed(1)} km · ETA: {destRoute.trafficText}
+                      Distanță: {destRoute.distanceKm.toFixed(1)} km · Durată: {destRoute.trafficText}
                     </Text>
                     <Text style={styles.priceText}>
-                      Price: {price!.toFixed(2)} lei
+                      Preț: {price!.toFixed(2)} lei
                     </Text>
                   </View>
                 </View>
 
                 {/* Clear destination button */}
                 <Pressable style={styles.clearButton} onPress={clearDestination}>
-                  <Text style={styles.clearButtonText}>✕ Change destination</Text>
+                  <Text style={styles.clearButtonText}>✕ Schimbă destinația</Text>
                 </Pressable>
               </>
             )}
@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pulsingLogo: {
-    width: 120,
-    height: 120,
+    width: 180,
+    height: 180,
     borderRadius: 20,
   },
   errorEmoji: {
