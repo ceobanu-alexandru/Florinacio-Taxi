@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
+import { UserProvider } from '@/contexts/user-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -66,14 +67,17 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={FlorinacioTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="map" options={{ title: 'Your Location' }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="light" />
-    </ThemeProvider>
+    <UserProvider>
+      <ThemeProvider value={FlorinacioTheme}>
+        <Stack>
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="map" options={{ title: 'Your Location' }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="light" />
+      </ThemeProvider>
+    </UserProvider>
   );
 }
 

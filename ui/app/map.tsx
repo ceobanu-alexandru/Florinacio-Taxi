@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { useLocalSearchParams } from 'expo-router';
+import { useUser } from '@/contexts/user-context';
 
 type LocationCoords = {
   latitude: number;
@@ -175,6 +176,12 @@ async function reverseGeocode(coords: LocationCoords): Promise<string> {
 
 export default function MapScreen() {
   const { askDestination } = useLocalSearchParams<{ askDestination?: string }>();
+  const { userMode } = useUser();
+
+  // Redirect to login if not logged in
+  if (!userMode) {
+    return <Redirect href="/login" />;
+  }
 
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -611,11 +618,25 @@ export default function MapScreen() {
           <View style={[styles.bottomBar, destination && destRoute ? styles.bottomBarTall : undefined]}>
             {/* Taxi info row */}
             <View style={styles.bottomRow}>
-              <Text style={styles.bottomEmoji}>🚖</Text>
+              <Image
+                source={require('../assets/images/soferul tau a ajuns.png')}
+                style={styles.bottomDriverImage}
+                resizeMode="contain"
+              />
               <View style={styles.bottomInfo}>
-                <Text style={styles.bottomTitle}>Bro este pe drum</Text>
+                <Text style={styles.bottomTitle}>
+                  Bro este la {(() => {
+                    const totalMinutes = Math.round(taxiRoute.durationMinutes);
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    if (hours > 0) {
+                      return minutes > 0 ? `${hours} ore și ${minutes} minute` : `${hours} ore`;
+                    }
+                    return `${minutes} minute`;
+                  })()} de tine
+                </Text>
                 <Text style={styles.bottomSubtitle}>
-                  Taxi sosește în: {taxiRoute.trafficText} ({taxiRoute.distanceKm.toFixed(1)} km)
+                  {taxiRoute.distanceKm.toFixed(1)} km
                 </Text>
               </View>
             </View>
@@ -631,7 +652,7 @@ export default function MapScreen() {
                       {destinationAddress ?? 'Destinație'}
                     </Text>
                     <Text style={styles.bottomSubtitle}>
-                      Distanță: {destRoute.distanceKm.toFixed(1)} km · Durată: {destRoute.trafficText}
+                      {destRoute.distanceKm.toFixed(1)} km
                     </Text>
                     <Text style={styles.priceText}>
                       Preț: {price!.toFixed(2)} lei
@@ -870,6 +891,10 @@ const styles = StyleSheet.create({
   },
   bottomEmoji: {
     fontSize: 36,
+  },
+  bottomDriverImage: {
+    width: 80,
+    height: 80,
   },
   bottomInfo: {
     flex: 1,
