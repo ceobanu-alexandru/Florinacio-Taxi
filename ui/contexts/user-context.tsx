@@ -13,6 +13,8 @@ type UserContextType = {
   setTarifZi: (tarif: string) => void;
   tarifNoapte: string;
   setTarifNoapte: (tarif: string) => void;
+  phoneNumber: string;
+  setPhoneNumber: (phone: string) => void;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -22,6 +24,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [driverStatus, setDriverStatus] = useState<DriverStatus>('liber');
   const [tarifZi, setTarifZi] = useState('3');
   const [tarifNoapte, setTarifNoapte] = useState('4');
+  const [phoneNumber, setPhoneNumber] = useState('0755123456');
 
   const logout = () => {
     setUserMode(null);
@@ -37,7 +40,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       tarifZi,
       setTarifZi,
       tarifNoapte,
-      setTarifNoapte
+      setTarifNoapte,
+      phoneNumber,
+      setPhoneNumber
     }}>
       {children}
     </UserContext.Provider>

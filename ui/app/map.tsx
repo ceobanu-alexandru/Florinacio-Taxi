@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -350,13 +350,13 @@ export default function MapScreen() {
   };
 
   // Calculate price based on time of day (6:00-22:00 = day, 22:00-6:00 = night)
-  const getCurrentPricePerKm = () => {
+  const price = useMemo(() => {
+    if (!destRoute) return null;
     const hour = new Date().getHours();
     const isDaytime = hour >= 6 && hour < 22;
-    return parseFloat(isDaytime ? tarifZi : tarifNoapte);
-  };
-
-  const price = destRoute ? destRoute.distanceKm * getCurrentPricePerKm() : null;
+    const pricePerKm = parseFloat(isDaytime ? tarifZi : tarifNoapte);
+    return destRoute.distanceKm * pricePerKm;
+  }, [destRoute, tarifZi, tarifNoapte]);
 
   useEffect(() => {
     if (!showDestinationPrompt) return;

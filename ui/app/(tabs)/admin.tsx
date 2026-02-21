@@ -1,4 +1,4 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser, DriverStatus } from '@/contexts/user-context';
 import { Redirect, useRouter } from 'expo-router';
@@ -19,7 +19,9 @@ export default function AdminScreen() {
     tarifZi,
     setTarifZi,
     tarifNoapte,
-    setTarifNoapte
+    setTarifNoapte,
+    phoneNumber,
+    setPhoneNumber
   } = useUser();
   const router = useRouter();
 
@@ -38,17 +40,25 @@ export default function AdminScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.logo}>BrotaXI</Text>
-          <Text style={styles.subtitle}>Panou Admin</Text>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: '#0D0D0D' }}
+    >
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.logo}>BrotaXI</Text>
+            <Text style={styles.subtitle}>Panou Admin</Text>
+          </View>
+          <Pressable style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Deconectare</Text>
+          </Pressable>
         </View>
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Deconectare</Text>
-        </Pressable>
-      </View>
 
       {/* Driver Photo */}
       <View style={styles.photoSection}>
@@ -118,20 +128,36 @@ export default function AdminScreen() {
         </View>
       </View>
 
+      {/* Phone Number Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Număr de telefon</Text>
+        
+        <View style={styles.tariffRow}>
+          <Text style={styles.tariffLabel}>Telefon</Text>
+          <TextInput
+            style={[styles.tariffInput, { flex: 1 }]}
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            placeholder="0755123456"
+            placeholderTextColor="#666666"
+          />
+        </View>
+      </View>
+
       {/* Save Button */}
       <Pressable style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Salvează Modificările</Text>
       </Pressable>
 
       <View style={styles.accentLine} />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0D0D0D',
     paddingHorizontal: 24,
   },
   header: {

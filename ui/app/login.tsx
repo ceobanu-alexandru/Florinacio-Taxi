@@ -15,8 +15,8 @@ export default function LoginScreen() {
       return; // Don't proceed if input is empty
     }
 
-    // Debug mode: if input is "admin", login as admin, otherwise login as passenger
-    if (phoneNumber.toLowerCase() === 'admin') {
+    // Debug mode: if input is "0000", login as admin, otherwise login as passenger
+    if (phoneNumber === '0000') {
       setUserMode('admin');
     } else {
       setUserMode('pasager');
@@ -54,7 +54,7 @@ export default function LoginScreen() {
           returnKeyType="done"
           onSubmitEditing={handleLogin}
         />
-        <Text style={styles.debugHint}>Debug: scrie "admin" pentru acces admin</Text>
+        <Text style={styles.debugHint}>Debug: scrie "0000" pentru acces admin</Text>
       </View>
 
       {/* Login Button */}

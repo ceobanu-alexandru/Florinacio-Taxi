@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -25,7 +25,7 @@ const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string; descri
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { userMode, driverStatus } = useUser();
+  const { userMode, driverStatus, tarifZi, tarifNoapte, phoneNumber } = useUser();
   const [remainingMinutes, setRemainingMinutes] = useState<number>(12);
 
   // Example ETA until current ride finishes (from backend in real app)
@@ -76,12 +76,12 @@ export default function HomeScreen() {
         <Text style={styles.fareTitle}>Tarife</Text>
         <View style={styles.fareRow}>
           <Text style={styles.fareLabel}>Zi</Text>
-          <Text style={styles.fareValue}>3 lei/km</Text>
+          <Text style={styles.fareValue}>{tarifZi} lei/km</Text>
         </View>
         <View style={styles.fareDivider} />
         <View style={styles.fareRow}>
           <Text style={styles.fareLabel}>Noapte</Text>
-          <Text style={styles.fareValue}>4 lei/km</Text>
+          <Text style={styles.fareValue}>{tarifNoapte} lei/km</Text>
         </View>
       </View>
 
@@ -102,6 +102,18 @@ export default function HomeScreen() {
         onPress={() => router.push({ pathname: '/map', params: { askDestination: '1' } })}
       >
         <Text style={styles.ctaText}>Solicită o cursă</Text>
+      </Pressable>
+
+      {/* Call Button */}
+      <Pressable
+        style={styles.callButton}
+        onPress={() => Linking.openURL(`tel:${phoneNumber}`)}
+      >
+        <Image
+          source={require('../../assets/images/buton apel.png')}
+          style={styles.callButtonImage}
+          resizeMode="contain"
+        />
       </Pressable>
 
       {/* Bottom accent line */}
@@ -173,6 +185,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0D0D0D',
     letterSpacing: 0.5,
+  },
+  callButton: {
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+  callButtonImage: {
+    width: 80,
+    height: 80,
   },
   statusBadge: {
     flexDirection: 'row',
