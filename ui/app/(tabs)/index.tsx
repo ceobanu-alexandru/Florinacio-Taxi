@@ -86,7 +86,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Hero section */}
-      <View style={styles.hero}>
+      <View style={[styles.hero]}>
         <Image
           source={require('../../assets/images/ada.png')}
           style={styles.heroLogo}
@@ -139,9 +139,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   heroLogo: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 100,
+    height: 100,
     overflow: 'hidden',
   },
   heroTitle: {
