@@ -23,8 +23,8 @@ type GoogleAutocompleteSuggestion = {
 };
 
 const TAXI_LOCATION: LocationCoords = {
-  latitude: 44.478640,
-  longitude: 26.124965,
+  latitude: 47.446463006875895,
+  longitude: 26.901535213917253,
 };
 
 const PRICE_PER_KM = 3; // lei per km
@@ -191,7 +191,9 @@ export default function MapScreen() {
   const [mapCenter, setMapCenter] = useState<LocationCoords | null>(null);
   const [isSelectingOnMap, setIsSelectingOnMap] = useState(false);
   const [showDestinationPrompt, setShowDestinationPrompt] = useState(askDestination === '1');
+  const [isSearchMode, setIsSearchMode] = useState(askDestination === '1');
   const [selectedSuggestionLabel, setSelectedSuggestionLabel] = useState<string | null>(null);
+  const [pendingDestination, setPendingDestination] = useState<LocationCoords | null>(null);
   const [destinationQuery, setDestinationQuery] = useState('');
   const [googleSuggestions, setGoogleSuggestions] = useState<GoogleAutocompleteSuggestion[]>([]);
   const [searchingPlaces, setSearchingPlaces] = useState(false);
@@ -274,6 +276,7 @@ export default function MapScreen() {
   };
 
   const handlePanDrag = () => {
+    if (!isSearchMode) return;
     if (isUserPanningRef.current) return;
     isUserPanningRef.current = true;
     setIsSelectingOnMap(true);
@@ -299,22 +302,51 @@ export default function MapScreen() {
     isUserPanningRef.current = false;
     setIsSelectingOnMap(false);
     animatePin(false);
-    setDestination(center);
+
+    if (!isSearchMode) return;
+
+    setPendingDestination(center);
+    setDestination(null);
     setDestRoute(null);
+    setDestinationAddress(null);
+    setDestRoute(null);
+    setIsSearchMode(false);
+  };
+
+  const confirmDestination = () => {
+    if (!pendingDestination) return;
+    setDestination(pendingDestination);
+    setPendingDestination(null);
   };
 
   /** Clear the destination pin */
   const clearDestination = () => {
+    const previousDestination = destination ?? pendingDestination;
+
+    isUserPanningRef.current = false;
     setDestination(null);
+    setPendingDestination(null);
     setDestRoute(null);
     setDestinationAddress(null);
-    // Re-fit to taxi route
-    if (mapRef.current && location) {
-      const coords = taxiRoute?.polylineCoords ?? [location, TAXI_LOCATION];
-      mapRef.current.fitToCoordinates(coords, {
-        edgePadding: { top: 80, right: 80, bottom: 200, left: 80 },
-        animated: true,
-      });
+    setShowDestinationPrompt(true);
+    setIsSearchMode(true);
+    setIsSelectingOnMap(false);
+    setDestinationQuery('');
+    setGoogleSuggestions([]);
+    setPlaceSearchError(null);
+    animatePin(false);
+
+    if (previousDestination && mapRef.current) {
+      setMapCenter(previousDestination);
+      mapRef.current.animateToRegion(
+        {
+          latitude: previousDestination.latitude,
+          longitude: previousDestination.longitude,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        },
+        350,
+      );
     }
   };
 
@@ -363,9 +395,11 @@ export default function MapScreen() {
     }
 
     setShowDestinationPrompt(false);
+    setIsSearchMode(true);
     setSelectedSuggestionLabel(details.label);
     setDestinationQuery(details.label);
     setDestination(null);
+    setPendingDestination(null);
     setDestRoute(null);
     setDestinationAddress(null);
     setMapCenter(details.coords);
@@ -435,15 +469,19 @@ export default function MapScreen() {
                 title="Bro Taxi"
                 description="Locația taxiului"
               >
-                <Text style={styles.taxiMarkerText}>🚖</Text>
+                <Image
+                  source={require('../assets/images/taxifinal.png')}
+                  style={styles.driverMarkerImage}
+                  resizeMode="contain"
+                />
               </Marker>
 
               {/* Selected destination pin */}
-              {destination && !isSelectingOnMap && (
+              {(pendingDestination || destination) && !isSelectingOnMap && (
                 <Marker
-                  coordinate={destination}
+                  coordinate={pendingDestination ?? destination!}
                   title="Destinație"
-                  description={destinationAddress ?? 'Destinația ta'}
+                  description={pendingDestination ? 'Confirmă destinația' : (destinationAddress ?? 'Destinația ta')}
                   anchor={{ x: 0.5, y: 1 }}
                 >
                   <Image source={require('../assets/images/pin.png')} style={styles.destinationPin} resizeMode="contain" />
@@ -469,7 +507,7 @@ export default function MapScreen() {
               )}
             </MapView>
 
-            {(isSelectingOnMap || !destination) && (
+            {isSearchMode && (isSelectingOnMap || !destination) && (
               <View style={styles.centerPinContainer} pointerEvents="none">
                 <Animated.View
                   style={[
@@ -529,11 +567,26 @@ export default function MapScreen() {
         )}
 
         {/* Hint banner — shown when no destination is set yet */}
-        {location && !loading && !destination && !showDestinationPrompt && (
+        {location && !loading && isSearchMode && !showDestinationPrompt && (
           <View style={styles.hintBanner}>
             <Text style={styles.hintText}>
               📍 {selectedSuggestionLabel ? `Ajustează punctul exact în zona ${selectedSuggestionLabel}` : 'Glisează harta și eliberează pentru a seta locația'}
             </Text>
+          </View>
+        )}
+
+        {/* Confirm destination before computing route */}
+        {location && !loading && pendingDestination && (
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmText}>Confirmi această destinație?</Text>
+            <View style={styles.confirmButtonsRow}>
+              <Pressable style={styles.confirmButton} onPress={confirmDestination}>
+                <Text style={styles.confirmButtonText}>Confirmă destinația</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryConfirmButton} onPress={clearDestination}>
+                <Text style={styles.secondaryConfirmButtonText}>Schimbă destinația</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -739,6 +792,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  confirmCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 170,
+    backgroundColor: 'rgba(20, 20, 20, 0.96)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  confirmText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#FFD600',
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  confirmButtonText: {
+    color: '#0D0D0D',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  secondaryConfirmButton: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  secondaryConfirmButtonText: {
+    color: '#FF6B6B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -801,9 +900,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF6B6B',
   },
-  taxiMarkerText: {
-    fontSize: 22,
-    textAlign: 'center',
+  driverMarkerImage: {
+    width: 44,
+    height: 44,
   },
   centerPinContainer: {
     position: 'absolute',
