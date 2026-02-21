@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, MapPressEvent } from 'react-native-maps';
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Stack } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 type LocationCoords = {
   latitude: number;
@@ -16,6 +17,11 @@ type RouteInfo = {
   trafficText: string;
 };
 
+type GoogleAutocompleteSuggestion = {
+  placeId: string;
+  description: string;
+};
+
 const TAXI_LOCATION: LocationCoords = {
   latitude: 44.478640,
   longitude: 26.124965,
@@ -24,6 +30,52 @@ const TAXI_LOCATION: LocationCoords = {
 const PRICE_PER_KM = 3; // lei per km
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyB029m41iU1JyyfI5ph_FnxugfiVMmXj20';
+
+async function fetchPlaceAutocomplete(query: string): Promise<GoogleAutocompleteSuggestion[]> {
+  const url =
+    `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
+    `?input=${encodeURIComponent(query)}` +
+    `&types=geocode` +
+    `&components=country:ro` +
+    `&language=ro` +
+    `&key=${GOOGLE_MAPS_API_KEY}`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.status === 'ZERO_RESULTS') return [];
+
+  if (data.status !== 'OK' || !Array.isArray(data.predictions)) {
+    throw new Error(data.error_message || `Places autocomplete error: ${data.status}`);
+  }
+
+  return data.predictions.map((prediction: { place_id: string; description: string }) => ({
+    placeId: prediction.place_id,
+    description: prediction.description,
+  }));
+}
+
+async function fetchPlaceDetails(placeId: string): Promise<{ coords: LocationCoords; label: string } | null> {
+  const url =
+    `https://maps.googleapis.com/maps/api/place/details/json` +
+    `?place_id=${encodeURIComponent(placeId)}` +
+    `&fields=name,formatted_address,geometry` +
+    `&language=ro` +
+    `&key=${GOOGLE_MAPS_API_KEY}`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.status !== 'OK' || !data.result?.geometry?.location) {
+    return null;
+  }
+
+  const { lat, lng } = data.result.geometry.location;
+  return {
+    coords: { latitude: lat, longitude: lng },
+    label: data.result.formatted_address ?? data.result.name ?? 'Destinație',
+  };
+}
 
 /** Decode a Google-encoded polyline string into an array of coordinates */
 function decodePolyline(encoded: string): LocationCoords[] {
@@ -122,6 +174,8 @@ async function reverseGeocode(coords: LocationCoords): Promise<string> {
 }
 
 export default function MapScreen() {
+  const { askDestination } = useLocalSearchParams<{ askDestination?: string }>();
+
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,8 +188,19 @@ export default function MapScreen() {
   const [destinationAddress, setDestinationAddress] = useState<string | null>(null);
   const [destRoute, setDestRoute] = useState<RouteInfo | null>(null);
   const [computingRoute, setComputingRoute] = useState(false);
+  const [mapCenter, setMapCenter] = useState<LocationCoords | null>(null);
+  const [isSelectingOnMap, setIsSelectingOnMap] = useState(false);
+  const [showDestinationPrompt, setShowDestinationPrompt] = useState(askDestination === '1');
+  const [selectedSuggestionLabel, setSelectedSuggestionLabel] = useState<string | null>(null);
+  const [destinationQuery, setDestinationQuery] = useState('');
+  const [googleSuggestions, setGoogleSuggestions] = useState<GoogleAutocompleteSuggestion[]>([]);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
 
   const mapRef = useRef<MapView>(null);
+  const isUserPanningRef = useRef(false);
+  const placeSearchRequestIdRef = useRef(0);
+  const pinLiftAnim = useRef(new Animated.Value(0)).current;
 
   // Get user location
   useEffect(() => {
@@ -152,6 +217,10 @@ export default function MapScreen() {
       });
 
       setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
+      setMapCenter({
         latitude: currentLocation.coords.latitude,
         longitude: currentLocation.coords.longitude,
       });
@@ -195,11 +264,43 @@ export default function MapScreen() {
     });
   }, [destination]);
 
-  /** Handle tapping on the map to set (or move) destination */
-  const handleMapPress = (e: MapPressEvent) => {
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    setDestination({ latitude, longitude });
-    setDestRoute(null); // clear old while computing
+  const animatePin = (lifted: boolean) => {
+    Animated.spring(pinLiftAnim, {
+      toValue: lifted ? 1 : 0,
+      speed: 22,
+      bounciness: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePanDrag = () => {
+    if (isUserPanningRef.current) return;
+    isUserPanningRef.current = true;
+    setIsSelectingOnMap(true);
+    animatePin(true);
+  };
+
+  const handleRegionChange = (region: Region) => {
+    setMapCenter({
+      latitude: region.latitude,
+      longitude: region.longitude,
+    });
+  };
+
+  const handleRegionChangeComplete = (region: Region) => {
+    const center = {
+      latitude: region.latitude,
+      longitude: region.longitude,
+    };
+    setMapCenter(center);
+
+    if (!isUserPanningRef.current) return;
+
+    isUserPanningRef.current = false;
+    setIsSelectingOnMap(false);
+    animatePin(false);
+    setDestination(center);
+    setDestRoute(null);
   };
 
   /** Clear the destination pin */
@@ -218,6 +319,71 @@ export default function MapScreen() {
   };
 
   const price = destRoute ? destRoute.distanceKm * PRICE_PER_KM : null;
+
+  useEffect(() => {
+    if (!showDestinationPrompt) return;
+
+    const query = destinationQuery.trim();
+    const requestId = ++placeSearchRequestIdRef.current;
+
+    if (query.length < 2) {
+      setGoogleSuggestions([]);
+      setSearchingPlaces(false);
+      setPlaceSearchError(null);
+      return;
+    }
+
+    setSearchingPlaces(true);
+    setPlaceSearchError(null);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const suggestions = await fetchPlaceAutocomplete(query);
+        if (requestId !== placeSearchRequestIdRef.current) return;
+        setGoogleSuggestions(suggestions);
+      } catch (_) {
+        if (requestId !== placeSearchRequestIdRef.current) return;
+        setGoogleSuggestions([]);
+        setPlaceSearchError('Nu s-au putut încărca sugestiile Google.');
+      } finally {
+        if (requestId === placeSearchRequestIdRef.current) {
+          setSearchingPlaces(false);
+        }
+      }
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
+  }, [destinationQuery, showDestinationPrompt]);
+
+  const handleSuggestionPress = async (place: GoogleAutocompleteSuggestion) => {
+    const details = await fetchPlaceDetails(place.placeId);
+    if (!details) {
+      setPlaceSearchError('Nu s-a putut obține locația exactă pentru această adresă.');
+      return;
+    }
+
+    setShowDestinationPrompt(false);
+    setSelectedSuggestionLabel(details.label);
+    setDestinationQuery(details.label);
+    setDestination(null);
+    setDestRoute(null);
+    setDestinationAddress(null);
+    setMapCenter(details.coords);
+    setGoogleSuggestions([]);
+    setPlaceSearchError(null);
+
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: details.coords.latitude,
+          longitude: details.coords.longitude,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        },
+        700,
+      );
+    }
+  };
 
   return (
     <>
@@ -238,76 +404,136 @@ export default function MapScreen() {
             <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         ) : location ? (
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-            showsUserLocation
-            showsMyLocationButton
-            onPress={handleMapPress}
-          >
-            {/* User marker */}
-            <Marker
-              coordinate={location}
-              title="Ești aici"
-              description="Punct de ridicare"
-              pinColor="#FFD600"
-            />
-
-            {/* Taxi cab marker */}
-            <Marker
-              coordinate={TAXI_LOCATION}
-              title="Bro Taxi"
-              description="Locația taxiului"
+          <>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              initialRegion={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+              showsUserLocation
+              showsMyLocationButton
+              onPanDrag={handlePanDrag}
+              onRegionChange={handleRegionChange}
+              onRegionChangeComplete={handleRegionChangeComplete}
             >
-              <Text style={styles.taxiMarkerText}>🚖</Text>
-            </Marker>
-
-            {/* Destination marker */}
-            {destination && (
+              {/* User marker */}
               <Marker
-                coordinate={destination}
-                title="Destinație"
-                description={destinationAddress ?? 'Destinația ta'}
-                pinColor="#FF3B30"
-                draggable
-                onDragEnd={(e) => {
-                  const { latitude, longitude } = e.nativeEvent.coordinate;
-                  setDestination({ latitude, longitude });
-                }}
+                coordinate={location}
+                title="Ești aici"
+                description="Punct de ridicare"
+                pinColor="#FFD600"
               />
-            )}
 
-            {/* Taxi → user route (dimmed when destination is set) */}
-            {taxiRoute?.polylineCoords && (
-              <Polyline
-                coordinates={taxiRoute.polylineCoords}
-                strokeColor={destination ? '#888888' : '#FFD600'}
-                strokeWidth={destination ? 3 : 4}
-              />
-            )}
+              {/* Taxi cab marker */}
+              <Marker
+                coordinate={TAXI_LOCATION}
+                title="Bro Taxi"
+                description="Locația taxiului"
+              >
+                <Text style={styles.taxiMarkerText}>🚖</Text>
+              </Marker>
 
-            {/* User → destination route */}
-            {destRoute?.polylineCoords && (
-              <Polyline
-                coordinates={destRoute.polylineCoords}
-                strokeColor="#00C853"
-                strokeWidth={5}
-              />
+              {/* Selected destination pin */}
+              {destination && !isSelectingOnMap && (
+                <Marker
+                  coordinate={destination}
+                  title="Destinație"
+                  description={destinationAddress ?? 'Destinația ta'}
+                  anchor={{ x: 0.5, y: 1 }}
+                >
+                  <Image source={require('../assets/images/pin.png')} style={styles.destinationPin} resizeMode="contain" />
+                </Marker>
+              )}
+
+              {/* Taxi → user route (dimmed when destination is set) */}
+              {taxiRoute?.polylineCoords && (
+                <Polyline
+                  coordinates={taxiRoute.polylineCoords}
+                  strokeColor={destination ? '#888888' : '#FFD600'}
+                  strokeWidth={destination ? 3 : 4}
+                />
+              )}
+
+              {/* User → destination route */}
+              {destRoute?.polylineCoords && (
+                <Polyline
+                  coordinates={destRoute.polylineCoords}
+                  strokeColor="#00C853"
+                  strokeWidth={5}
+                />
+              )}
+            </MapView>
+
+            {(isSelectingOnMap || !destination) && (
+              <View style={styles.centerPinContainer} pointerEvents="none">
+                <Animated.View
+                  style={[
+                    styles.pinInner,
+                    {
+                      transform: [
+                        {
+                          translateY: pinLiftAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, -18],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Image source={require('../assets/images/pin.png')} style={styles.centerPin} resizeMode="contain" />
+                </Animated.View>
+              </View>
             )}
-          </MapView>
+          </>
         ) : null}
 
+        {/* Destination suggestions */}
+        {location && !loading && showDestinationPrompt && (
+          <View style={styles.destinationPromptCard}>
+            <Text style={styles.destinationPromptTitle}>Unde vrei să mergi?</Text>
+            <Text style={styles.destinationPromptSubtitle}>Scrie destinația și alege din sugestiile Google.</Text>
+            <TextInput
+              value={destinationQuery}
+              onChangeText={setDestinationQuery}
+              placeholder="Scrie destinația"
+              placeholderTextColor="#777777"
+              style={styles.destinationInput}
+              autoCorrect={false}
+              autoCapitalize="words"
+            />
+
+            {destinationQuery.trim().length > 0 && (
+              <View style={styles.suggestionsWrap}>
+                {searchingPlaces ? (
+                  <Text style={styles.searchStatusText}>Se caută adrese cu Google...</Text>
+                ) : placeSearchError ? (
+                  <Text style={styles.noSuggestionText}>{placeSearchError}</Text>
+                ) : googleSuggestions.length > 0 ? (
+                  googleSuggestions.map((place) => (
+                    <Pressable key={place.placeId} style={styles.suggestionChip} onPress={() => void handleSuggestionPress(place)}>
+                      <Text style={styles.suggestionChipText}>{place.description}</Text>
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={styles.noSuggestionText}>Nu există adrese găsite.</Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Hint banner — shown when no destination is set yet */}
-        {location && !loading && !destination && (
+        {location && !loading && !destination && !showDestinationPrompt && (
           <View style={styles.hintBanner}>
-            <Text style={styles.hintText}>📍 Atinge harta pentru a seta destinația</Text>
+            <Text style={styles.hintText}>
+              📍 {selectedSuggestionLabel ? `Ajustează punctul exact în zona ${selectedSuggestionLabel}` : 'Glisează harta și eliberează pentru a seta locația'}
+            </Text>
           </View>
         )}
 
@@ -453,6 +679,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  destinationPromptCard: {
+    position: 'absolute',
+    top: 8,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    gap: 10,
+  },
+  destinationPromptTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  destinationPromptSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#999999',
+  },
+  destinationInput: {
+    backgroundColor: '#1E1E1E',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  suggestionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  suggestionChip: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  suggestionChipText: {
+    color: '#FFD600',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  noSuggestionText: {
+    color: '#999999',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  searchStatusText: {
+    color: '#FFD600',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -518,5 +804,25 @@ const styles = StyleSheet.create({
   taxiMarkerText: {
     fontSize: 22,
     textAlign: 'center',
+  },
+  centerPinContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -43,
+    marginTop: -86,
+    zIndex: 20,
+  },
+  pinInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerPin: {
+    width: 86,
+    height: 86,
+  },
+  destinationPin: {
+    width: 34,
+    height: 34,
   },
 });

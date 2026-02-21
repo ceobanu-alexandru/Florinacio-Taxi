@@ -31,7 +31,7 @@ export default function HomeScreen() {
 
   // Simulate fetching driver status — replace with real API call
   useEffect(() => {
-    const demoStatus: DriverStatus = 'ocupat'; // Change this value to 'liber' or 'indisponibil' to see different states
+    const demoStatus: DriverStatus = 'liber'; // Change this value to 'liber' or 'indisponibil' to see different states
     setDriverStatus(demoStatus);
 
     // Example ETA until current ride finishes (from backend in real app)
@@ -40,7 +40,7 @@ export default function HomeScreen() {
 
   // Countdown while driver is occupied
   useEffect(() => {
-    if (driverStatus !== 'ocupat') return;
+    if (driverStatus !== 'liber') return;
 
     const interval = setInterval(() => {
       setRemainingMinutes((prev) => (prev > 1 ? prev - 1 : 1));
@@ -97,7 +97,10 @@ export default function HomeScreen() {
       </View>
 
       {/* CTA Button */}
-      <Pressable style={styles.ctaButton} onPress={() => router.push('/map')}>
+      <Pressable
+        style={styles.ctaButton}
+        onPress={() => router.push({ pathname: '/map', params: { askDestination: '1' } })}
+      >
         <Text style={styles.ctaText}>Solicită o cursă</Text>
       </Pressable>
 
