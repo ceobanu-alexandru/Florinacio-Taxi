@@ -1,20 +1,18 @@
 const express = require("express");
-const pool = require("./database/db");
+const cors = require("cors");
+const usersRoutes = require("./routes/users.routes");
+
 const app = express();
+app.use(cors()); 
+
+app.use(express.json());
+
+app.use("/api/users", usersRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });
 });
 
-app.get("/users", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM users");
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
-  }
-});
 
 app.listen(3000, () => {
   console.log("Server running on http://localhost:3000");
