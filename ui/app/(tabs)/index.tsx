@@ -96,14 +96,6 @@ export default function HomeScreen() {
         <Text style={styles.heroSubtitle}>Curse premium, oricând</Text>
       </View>
 
-      {/* CTA Button */}
-      <Pressable
-        style={styles.ctaButton}
-        onPress={() => router.push({ pathname: '/map', params: { askDestination: '1' } })}
-      >
-        <Text style={styles.ctaText}>Solicită o cursă</Text>
-      </Pressable>
-
       {/* Call Button */}
       <Pressable
         style={styles.callButton}
@@ -114,6 +106,14 @@ export default function HomeScreen() {
           style={styles.callButtonImage}
           resizeMode="contain"
         />
+      </Pressable>
+
+      {/* CTA Button */}
+      <Pressable
+        style={styles.ctaButton}
+        onPress={() => router.push({ pathname: '/map', params: { askDestination: '1' } })}
+      >
+        <Text style={styles.ctaText}>Solicită o cursă</Text>
       </Pressable>
 
       {/* Bottom accent line */}
