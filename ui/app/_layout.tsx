@@ -59,7 +59,7 @@ export default function RootLayout() {
           <Image
             source={require('../assets/images/ada.png')}
             style={styles.splashImage}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </Animated.View>
       </View>
@@ -80,7 +80,6 @@ export default function RootLayout() {
     </UserProvider>
   );
 }
-
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
@@ -96,8 +95,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   splashImage: {
-    width: '100%',
-    height: '100%',
+    width: '80%',
+    height: '80%',
     borderRadius: 20,
   },
 });

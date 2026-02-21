@@ -2,9 +2,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { useUser } from '@/contexts/user-context';
-
-type DriverStatus = 'liber' | 'ocupat' | 'indisponibil';
+import { useUser, DriverStatus } from '@/contexts/user-context';
 
 const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string; description: string }> = {
   liber: {
@@ -27,21 +25,11 @@ const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string; descri
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { userMode } = useUser();
-  const [driverStatus, setDriverStatus] = useState<DriverStatus>('ocupat'); // Default status, will be updated on mount
+  const { userMode, driverStatus } = useUser();
   const [remainingMinutes, setRemainingMinutes] = useState<number>(12);
 
-  // Redirect to login if not logged in
-  if (!userMode) {
-    return <Redirect href="/login" />;
-  }
-
-  // Simulate fetching driver status — replace with real API call
+  // Example ETA until current ride finishes (from backend in real app)
   useEffect(() => {
-    const demoStatus: DriverStatus = 'liber'; // Change this value to 'liber' or 'indisponibil' to see different states
-    setDriverStatus(demoStatus);
-
-    // Example ETA until current ride finishes (from backend in real app)
     setRemainingMinutes(12);
   }, []);
 
@@ -55,6 +43,11 @@ export default function HomeScreen() {
 
     return () => clearInterval(interval);
   }, [driverStatus]);
+
+  // Redirect to login if not logged in
+  if (!userMode) {
+    return <Redirect href="/login" />;
+  }
 
   const status = STATUS_CONFIG[driverStatus];
 

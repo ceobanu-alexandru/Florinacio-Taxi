@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUser } from '@/contexts/user-context';
+import { useUser, DriverStatus } from '@/contexts/user-context';
 import { Redirect, useRouter } from 'expo-router';
-
-type DriverStatus = 'liber' | 'ocupat' | 'indisponibil';
 
 const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string }> = {
   liber: { label: 'Liber', color: '#00C853' },
@@ -14,27 +11,31 @@ const STATUS_CONFIG: Record<DriverStatus, { label: string; color: string }> = {
 
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
-  const { logout, userMode } = useUser();
+  const { 
+    logout, 
+    userMode, 
+    driverStatus, 
+    setDriverStatus,
+    tarifZi,
+    setTarifZi,
+    tarifNoapte,
+    setTarifNoapte
+  } = useUser();
   const router = useRouter();
-  
-  const [driverStatus, setDriverStatus] = useState<DriverStatus>('liber');
-  const [tarifZi, setTarifZi] = useState('3');
-  const [tarifNoapte, setTarifNoapte] = useState('4');
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const handleSave = () => {
+    // Data is already saved in context when user changes it
+    alert('Setările au fost salvate!');
+  };
 
   // Redirect to login if not logged in or not admin
   if (!userMode || userMode !== 'admin') {
     return <Redirect href="/login" />;
   }
-
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
-  };
-
-  const handleSave = () => {
-    // TODO: Save to backend/storage
-    alert('Setările au fost salvate!');
-  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }}>

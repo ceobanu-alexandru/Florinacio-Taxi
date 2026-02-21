@@ -28,8 +28,6 @@ const TAXI_LOCATION: LocationCoords = {
   longitude: 26.901535213917253,
 };
 
-const PRICE_PER_KM = 3; // lei per km
-
 const GOOGLE_MAPS_API_KEY = 'AIzaSyB029m41iU1JyyfI5ph_FnxugfiVMmXj20';
 
 async function fetchPlaceAutocomplete(query: string): Promise<GoogleAutocompleteSuggestion[]> {
@@ -176,12 +174,7 @@ async function reverseGeocode(coords: LocationCoords): Promise<string> {
 
 export default function MapScreen() {
   const { askDestination } = useLocalSearchParams<{ askDestination?: string }>();
-  const { userMode } = useUser();
-
-  // Redirect to login if not logged in
-  if (!userMode) {
-    return <Redirect href="/login" />;
-  }
+  const { userMode, tarifZi, tarifNoapte } = useUser();
 
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -356,7 +349,14 @@ export default function MapScreen() {
     }
   };
 
-  const price = destRoute ? destRoute.distanceKm * PRICE_PER_KM : null;
+  // Calculate price based on time of day (6:00-22:00 = day, 22:00-6:00 = night)
+  const getCurrentPricePerKm = () => {
+    const hour = new Date().getHours();
+    const isDaytime = hour >= 6 && hour < 22;
+    return parseFloat(isDaytime ? tarifZi : tarifNoapte);
+  };
+
+  const price = destRoute ? destRoute.distanceKm * getCurrentPricePerKm() : null;
 
   useEffect(() => {
     if (!showDestinationPrompt) return;
@@ -424,6 +424,11 @@ export default function MapScreen() {
       );
     }
   };
+
+  // Redirect to login if not logged in
+  if (!userMode) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <>

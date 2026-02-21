@@ -1,15 +1,26 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/user-context';
+import { useState } from 'react';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { setUserMode } = useUser();
+  const [phoneNumber, setPhoneNumber] = useState('');
 
-  const handleModeSelect = (mode: 'pasager' | 'admin') => {
-    setUserMode(mode);
+  const handleLogin = () => {
+    if (!phoneNumber.trim()) {
+      return; // Don't proceed if input is empty
+    }
+
+    // Debug mode: if input is "admin", login as admin, otherwise login as passenger
+    if (phoneNumber.toLowerCase() === 'admin') {
+      setUserMode('admin');
+    } else {
+      setUserMode('pasager');
+    }
     router.replace('/(tabs)');
   };
 
@@ -29,36 +40,31 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      {/* Mode Selection */}
-      <View style={styles.modeSection}>
-        <Text style={styles.modeTitle}>Selectează modul de utilizare</Text>
-
-        <Pressable
-          style={styles.modeButton}
-          onPress={() => handleModeSelect('pasager')}
-        >
-          <View style={styles.modeIconContainer}>
-            <Text style={styles.modeIcon}>👤</Text>
-          </View>
-          <View style={styles.modeInfo}>
-            <Text style={styles.modeLabel}>Pasager</Text>
-            <Text style={styles.modeDescription}>Comandă și urmărește curse</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={styles.modeButton}
-          onPress={() => handleModeSelect('admin')}
-        >
-          <View style={styles.modeIconContainer}>
-            <Text style={styles.modeIcon}>🚖</Text>
-          </View>
-          <View style={styles.modeInfo}>
-            <Text style={styles.modeLabel}>Admin (Șofer)</Text>
-            <Text style={styles.modeDescription}>Gestionează status și tarife</Text>
-          </View>
-        </Pressable>
+      {/* Phone Number Input */}
+      <View style={styles.inputSection}>
+        <Text style={styles.inputLabel}>Număr de telefon</Text>
+        <TextInput
+          style={styles.phoneInput}
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          placeholder="Introduce numărul de telefon"
+          placeholderTextColor="#666666"
+          keyboardType="phone-pad"
+          autoFocus
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+        />
+        <Text style={styles.debugHint}>Debug: scrie "admin" pentru acces admin</Text>
       </View>
+
+      {/* Login Button */}
+      <Pressable
+        style={[styles.loginButton, !phoneNumber.trim() && styles.loginButtonDisabled]}
+        onPress={handleLogin}
+        disabled={!phoneNumber.trim()}
+      >
+        <Text style={styles.loginButtonText}>Continuă</Text>
+      </Pressable>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -104,50 +110,52 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFD600',
   },
-  modeSection: {
-    gap: 16,
+  inputSection: {
+    gap: 12,
+    marginBottom: 24,
   },
-  modeTitle: {
-    fontSize: 18,
+  inputLabel: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  modeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  phoneInput: {
     backgroundColor: '#141414',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#2A2A2A',
     padding: 20,
-    gap: 16,
-  },
-  modeIconContainer: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeIcon: {
-    fontSize: 32,
-  },
-  modeInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  modeLabel: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#FFFFFF',
   },
-  modeDescription: {
-    fontSize: 13,
-    color: '#999999',
-    fontWeight: '500',
+  debugHint: {
+    fontSize: 12,
+    color: '#666666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  loginButton: {
+    backgroundColor: '#FFD600',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 50,
+    alignItems: 'center',
+    shadowColor: '#FFD600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#3A3A3A',
+    shadowOpacity: 0,
+  },
+  loginButtonText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0D0D0D',
+    letterSpacing: 0.5,
   },
   footer: {
     marginTop: 'auto',
