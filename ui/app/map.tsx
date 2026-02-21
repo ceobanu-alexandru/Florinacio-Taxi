@@ -635,9 +635,12 @@ export default function MapScreen() {
                     const hours = Math.floor(totalMinutes / 60);
                     const minutes = totalMinutes % 60;
                     if (hours > 0) {
-                      return minutes > 0 ? `${hours} ore și ${minutes} minute` : `${hours} ore`;
+                      const hourText = hours === 1 ? 'oră' : 'ore';
+                      const minuteText = minutes === 1 ? 'minut' : 'minute';
+                      return minutes > 0 ? `${hours} ${hourText} și ${minutes} ${minuteText}` : `${hours} ${hourText}`;
                     }
-                    return `${minutes} minute`;
+                    const minuteText = minutes === 1 ? 'minut' : 'minute';
+                    return `${minutes} ${minuteText}`;
                   })()} de tine
                 </Text>
                 <Text style={styles.bottomSubtitle}>
@@ -947,8 +950,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginLeft: -43,
-    marginTop: -86,
+    marginLeft: -40,
+    marginTop: -92,
     zIndex: 20,
   },
   pinInner: {
