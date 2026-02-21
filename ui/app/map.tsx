@@ -309,14 +309,13 @@ export default function MapScreen() {
     setDestination(null);
     setDestRoute(null);
     setDestinationAddress(null);
-    setDestRoute(null);
-    setIsSearchMode(false);
   };
 
   const confirmDestination = () => {
     if (!pendingDestination) return;
     setDestination(pendingDestination);
     setPendingDestination(null);
+    setIsSearchMode(false);
   };
 
   /** Clear the destination pin */
@@ -476,15 +475,25 @@ export default function MapScreen() {
                 />
               </Marker>
 
-              {/* Selected destination pin */}
+              {/* Shadow marker during selection */}
+              {isSelectingOnMap && mapCenter && (
+                <Marker
+                  coordinate={mapCenter}
+                  anchor={{ x: 0.14, y: 0.5 }}
+                >
+                  <View style={styles.shadowDot} />
+                </Marker>
+              )}
+
+              {/* Selected destination pin (solid) */}
               {(pendingDestination || destination) && !isSelectingOnMap && (
                 <Marker
                   coordinate={pendingDestination ?? destination!}
                   title="Destinație"
                   description={pendingDestination ? 'Confirmă destinația' : (destinationAddress ?? 'Destinația ta')}
-                  anchor={{ x: 0.5, y: 1 }}
+                  anchor={{ x: 0.14, y: 0.5 }}
                 >
-                  <Image source={require('../assets/images/pin.png')} style={styles.destinationPin} resizeMode="contain" />
+                  <View style={styles.destinationDot} />
                 </Marker>
               )}
 
@@ -920,8 +929,20 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
   },
-  destinationPin: {
-    width: 34,
-    height: 34,
+  destinationDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#000000',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  shadowDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
 });
