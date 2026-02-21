@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/user-context';
 import { useState } from 'react';
+import { getUserByPhoneNumber } from '@/api/users';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -10,17 +11,24 @@ export default function LoginScreen() {
   const { setUserMode } = useUser();
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!phoneNumber.trim()) {
       return; // Don't proceed if input is empty
     }
 
-    // Debug mode: if input is "0000", login as admin, otherwise login as passenger
-    if (phoneNumber === '0000') {
-      setUserMode('admin');
-    } else {
-      setUserMode('pasager');
+    try {
+      const user = await getUserByPhoneNumber(phoneNumber.trim());
+      console.log('User data:', user);
+      if(user.role === 'admin_user') {
+        setUserMode('admin');
+      } else {
+        setUserMode('pasager');
+      }
+    } catch (err) {
+      setUserMode('pasager'); // eroare ca nu s a gasit user
+      console.log(err);
     }
+
     router.replace('/(tabs)');
   };
 
@@ -54,7 +62,6 @@ export default function LoginScreen() {
           returnKeyType="done"
           onSubmitEditing={handleLogin}
         />
-        <Text style={styles.debugHint}>Debug: scrie "0000" pentru acces admin</Text>
       </View>
 
       {/* Login Button */}
