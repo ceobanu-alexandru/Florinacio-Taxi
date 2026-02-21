@@ -481,7 +481,7 @@ export default function MapScreen() {
                 description="Locația taxiului"
               >
                 <Image
-                  source={require('../assets/images/taxifinal.png')}
+                  source={require('../assets/images/Taxi.png')}
                   style={styles.driverMarkerImage}
                   resizeMode="contain"
                 />
@@ -943,8 +943,8 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
   },
   driverMarkerImage: {
-    width: 44,
-    height: 44,
+    width: 30,
+    height: 30,// problema
   },
   centerPinContainer: {
     position: 'absolute',
